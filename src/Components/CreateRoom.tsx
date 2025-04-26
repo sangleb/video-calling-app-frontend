@@ -7,7 +7,7 @@ const CreateRoom : React.FC = () => {
 
     const initRoom = () => {
         console.log("initialized a request to create a new room", socket);
-        socket.emit("cerate room")
+        socket.emit("create-room")
     }
 
     return(
@@ -15,7 +15,7 @@ const CreateRoom : React.FC = () => {
             onClick={initRoom}
             className="btn btn-primary"
         >
-            start new meeting in a new room
+            start a new meeting
         </button>
     )
 }
