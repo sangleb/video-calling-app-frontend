@@ -1,8 +1,10 @@
 import SocketIoClient from 'socket.io-client';
-import { createContext, useEffect, useState } from 'react';
+import { createContext, useEffect, useReducer, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Peer from 'peerjs';
 import { v4 as UUIDV4 } from 'uuid';
+import { peerReducer } from '../Reducers/peerReducer';
+import { addPeerAction } from '../Actions/peerActions';
 
 
 const WS_Server = "http://localhost:5500";
@@ -24,6 +26,8 @@ export const SocketProvider: React.FC<Props> = ({ children }) => {
     // state variable to store the userId
     const [user, setUser] = useState<Peer>(); // new peer user
     const [stream, setStream]= useState<MediaStream>();
+
+    const [peers, dispatch] = useReducer(peerReducer, {}); // peers --> state
 
     const fetchParticipantLIst = ({roomId, participants}: {roomId: string, participants: string[]}) => {
         console.log("fetched room participants");
@@ -58,8 +62,31 @@ export const SocketProvider: React.FC<Props> = ({ children }) => {
 
         socket.on("get-users", fetchParticipantLIst);
     }, []);
+
+    useEffect(() => {
+        if(!user || !stream) return;
+        socket.on("user-joined", ({peerId}) =>{
+            const call = user.call(peerId, stream);
+            console.log("calling the new peer", peerId);
+            call.on("stream", () => {
+                dispatch(addPeerAction(peerId, stream));
+            })
+        });
+        user.on("call", (call) =>{
+            // what to do when other peers in the grp call you when u joined
+            console.log("receiving a call");
+            call.answer(stream);
+            call.on("stream", () => {
+                dispatch(addPeerAction(call.peer, stream));
+            })
+        })
+
+        socket.emit("ready");
+        
+    }, [user, stream])
+
     return (
-        <SocketContext.Provider value={{ socket, user, stream }}>
+        <SocketContext.Provider value={{ socket, user, stream, peers}}>
             {children}
         </SocketContext.Provider>
     )
